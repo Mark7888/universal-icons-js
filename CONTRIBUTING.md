@@ -86,17 +86,21 @@ Follow these steps to add a new platform preset:
 ### 1 · Create the preset file
 
 Create `src/presets/<your-preset-name>.ts`.  
-The file must export a named constant of type `IconEntry[]`:
+The file must export a **factory function** that accepts an optional options
+object and returns `IconEntry[]`:
 
 ```ts
 // src/presets/my-platform.ts
-import type { IconEntry } from "../types.js";
+import type { IconEntry, MyPlatformOptions } from "../types.js";
 
-export const myPlatform: IconEntry[] = [
-  { target: "path/to/icon-48.png", format: "png", widthPx: 48, heightPx: 48 },
-  { target: "path/to/icon-96.png", format: "png", widthPx: 96, heightPx: 96 },
-  // … add all required sizes
-];
+export function myPlatform(options?: MyPlatformOptions): IconEntry[] {
+  const base = options?.outputDir ?? "my-platform-default-dir";
+  return [
+    { target: `${base}/icon-48.png`, format: "png", widthPx: 48, heightPx: 48 },
+    { target: `${base}/icon-96.png`, format: "png", widthPx: 96, heightPx: 96 },
+    // … add all required sizes
+  ];
+}
 ```
 
 **Guidelines:**
@@ -104,11 +108,28 @@ export const myPlatform: IconEntry[] = [
 - Use `png` for all raster icons unless the platform specifically requires
   another format.
 - Use `ico` only for Windows / favicon targets.
-- Output paths should match the convention expected by the target platform's
-  build tooling.
+- Output paths should be built from the `base` variable so users can override
+  them. Always provide a sensible default.
 - Include a JSDoc comment with a link to the official icon size reference.
 
-### 2 · Register the preset
+### 2 · Add the option type to `src/types.ts`
+
+Add an options interface and extend the `PresetConfig` union:
+
+```ts
+// Options interface
+export interface MyPlatformOptions {
+  /** Base output directory. @default "my-platform-default-dir" */
+  outputDir?: string;
+}
+
+// Extend PresetConfig
+export type PresetConfig =
+  // … existing variants …
+  | ({ name: "my-platform" } & MyPlatformOptions);
+```
+
+### 3 · Register the preset
 
 Open `src/presets/index.ts` and add an export:
 
@@ -116,9 +137,7 @@ Open `src/presets/index.ts` and add an export:
 export { myPlatform } from "./my-platform.js";
 ```
 
-### 3 · Add the preset name to the union type
-
-Open `src/types.ts` and add your identifier to the `PresetName` union:
+### 4 · Add the preset name to the `PresetName` union in `src/types.ts`
 
 ```ts
 export type PresetName =
@@ -128,30 +147,44 @@ export type PresetName =
   | "my-platform";   // ← add here
 ```
 
-### 4 · Register the preset in the generator map
+### 5 · Register the factory in `src/generator.ts`
 
-Open `src/generator.ts`.  
-Import your preset and add it to `PRESET_MAP`:
+Import the function and add a typed entry to `PRESET_FACTORIES`:
 
 ```ts
 import { myPlatform } from "./presets/index.js";
+import type { MyPlatformOptions } from "./types.js";
 
-const PRESET_MAP: Record<PresetName, IconEntry[]> = {
+const PRESET_FACTORIES: {
+  // … existing entries …
+  "my-platform": (opts?: MyPlatformOptions) => IconEntry[];
+} = {
   // …
   "my-platform": myPlatform,
 };
 ```
 
-### 5 · Write tests
+### 6 · Export the option type from `src/index.ts`
+
+```ts
+export type {
+  // … existing exports …
+  MyPlatformOptions,
+} from "./types.js";
+```
+
+### 7 · Write tests
 
 Add a `describe` block for your preset in `tests/presets.test.ts` following
 the existing pattern.  At minimum, test:
 
-- All entries are valid (non-empty target, positive dimensions, known format).
-- No duplicate `target` paths.
+- Calling the factory with **no arguments** produces valid entries with no
+  duplicate targets.
 - Any platform-specific size or file name requirements.
+- Calling the factory with a **custom `outputDir`** prefixes all targets
+  with the custom path.
 
-### 6 · Update the README
+### 8 · Update the README
 
 Add a row to the **Available presets** table in `README.md`.
 

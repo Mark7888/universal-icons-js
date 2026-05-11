@@ -2,7 +2,20 @@ import fs from "fs";
 import path from "path";
 import sharp from "sharp";
 import toIco from "to-ico";
-import type { IconConfig, IconEntry, PresetName } from "./types.js";
+import type {
+  IconConfig,
+  IconEntry,
+  PresetName,
+  PresetConfig,
+  ReactNativeAndroidOptions,
+  ReactNativeIosOptions,
+  ReactNativeWindowsOptions,
+  ReactNativeMacosOptions,
+  ViteOptions,
+  ElectronViteOptions,
+  PwaOptions,
+  WebOptions,
+} from "./types.js";
 import {
   reactNativeAndroid,
   reactNativeIos,
@@ -14,8 +27,17 @@ import {
   web,
 } from "./presets/index.js";
 
-/** Map of preset name → list of icon entries. */
-const PRESET_MAP: Record<PresetName, IconEntry[]> = {
+/** Map of preset name → factory function. */
+const PRESET_FACTORIES: {
+  "react-native-android": (opts?: ReactNativeAndroidOptions) => IconEntry[];
+  "react-native-ios": (opts?: ReactNativeIosOptions) => IconEntry[];
+  "react-native-macos": (opts?: ReactNativeMacosOptions) => IconEntry[];
+  "react-native-windows": (opts?: ReactNativeWindowsOptions) => IconEntry[];
+  vite: (opts?: ViteOptions) => IconEntry[];
+  "electron-vite": (opts?: ElectronViteOptions) => IconEntry[];
+  pwa: (opts?: PwaOptions) => IconEntry[];
+  web: (opts?: WebOptions) => IconEntry[];
+} = {
   "react-native-android": reactNativeAndroid,
   "react-native-ios": reactNativeIos,
   "react-native-macos": reactNativeMacos,
@@ -41,12 +63,22 @@ export function resolveEntries(config: IconConfig): IconEntry[] {
     }
   };
 
-  for (const presetName of config.presets ?? []) {
-    const preset = PRESET_MAP[presetName];
-    if (!preset) {
-      throw new Error(`Unknown preset: "${presetName}"`);
+  for (const preset of config.presets ?? []) {
+    const name: PresetName =
+      typeof preset === "string" ? preset : preset.name;
+
+    const factory = PRESET_FACTORIES[name];
+    if (!factory) {
+      throw new Error(`Unknown preset: "${name}"`);
     }
-    for (const entry of preset) {
+
+    // Destructure `name` out so only the actual options are passed to the factory.
+    const opts =
+      typeof preset === "string"
+        ? undefined
+        : (({ name: _n, ...rest }: PresetConfig) => rest)(preset);
+
+    for (const entry of (factory as (opts?: object) => IconEntry[])(opts)) {
       add(entry);
     }
   }
@@ -57,6 +89,7 @@ export function resolveEntries(config: IconConfig): IconEntry[] {
 
   return entries;
 }
+
 
 /**
  * Generates a single icon file from the source image.

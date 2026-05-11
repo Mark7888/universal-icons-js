@@ -70,8 +70,14 @@ const iconConfig: IconConfig = {
   // Path to your source image (SVG recommended for lossless scaling)
   source: "./icon.svg",
 
-  // Built-in presets — pick the ones you need
-  presets: ["react-native-android", "react-native-ios", "vite", "pwa"],
+  // Built-in presets — use a plain string for defaults, or an object to
+  // customise the output directory for that preset.
+  presets: [
+    "vite",
+    "pwa",
+    { name: "react-native-android", outputDir: "./android" },
+    { name: "react-native-ios",     outputDir: "./ios" },
+  ],
 
   // Optional: add any extra sizes you need on top of the presets
   manualList: [
@@ -102,8 +108,11 @@ your manual list, relative to the directory containing `iconConfig.ts`.
 
 ### Presets
 
-The `presets` array accepts one or more built-in preset identifiers.
-Each preset defines the exact set of icon files needed for that platform.
+The `presets` array accepts one or more built-in presets. Each item can be
+either a **plain string** (uses default output paths) or a **config object**
+that lets you override the default directory for that preset.
+
+#### Using default paths
 
 ```ts
 const iconConfig: IconConfig = {
@@ -111,6 +120,49 @@ const iconConfig: IconConfig = {
   presets: ["react-native-android", "pwa"],
 };
 ```
+
+#### Overriding default paths
+
+Each preset exposes its own typed options. Pass a `{ name, ...options }`
+object to customise where files are written:
+
+```ts
+const iconConfig: IconConfig = {
+  source: "./icon.svg",
+  presets: [
+    // Default: writes to android/
+    "react-native-android",
+
+    // Custom: Android project lives in a monorepo sub-folder
+    { name: "react-native-android", outputDir: "./apps/mobile/android" },
+
+    // Custom: iOS project in a different directory
+    { name: "react-native-ios", outputDir: "./apps/mobile/ios" },
+
+    // Custom: Vite app's public folder
+    { name: "vite", publicDir: "./apps/web/public" },
+
+    // Custom: PWA icons inside a specific assets folder
+    { name: "pwa", outputDir: "./apps/web/src/assets/pwa" },
+
+    // Custom: Electron resources folder
+    { name: "electron-vite", resourcesDir: "./apps/desktop/resources" },
+  ],
+};
+```
+
+**Per-preset option keys:**
+
+| Preset | Option | Default |
+|--------|--------|---------|
+| `react-native-android` | `outputDir` | `"android"` |
+| `react-native-ios` | `outputDir` | `"ios"` |
+| `react-native-windows` | `outputDir` | `"windows"` |
+| `react-native-macos` | `outputDir` | `"macos"` |
+| `vite` | `publicDir` | `"public"` |
+| `electron-vite` | `resourcesDir` | `"resources"` |
+| `pwa` | `outputDir` | `"public/pwa"` |
+| `web` | `publicDir` | `"public"` |
 
 ### Manual list
 

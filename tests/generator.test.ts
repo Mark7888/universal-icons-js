@@ -53,11 +53,48 @@ describe("resolveEntries", () => {
     expect(resolveEntries(config)).toEqual([]);
   });
 
-  it("expands a preset into its entries", () => {
+  it("expands a preset string into its entries", () => {
     const config: IconConfig = { source: "./icon.svg", presets: ["pwa"] };
     const entries = resolveEntries(config);
     expect(entries.length).toBeGreaterThan(0);
     expect(entries.every((e) => e.format === "png")).toBe(true);
+  });
+
+  it("expands a PresetConfig object using default paths", () => {
+    const config: IconConfig = {
+      source: "./icon.svg",
+      presets: [{ name: "pwa" }],
+    };
+    const entries = resolveEntries(config);
+    expect(entries.length).toBeGreaterThan(0);
+    expect(entries.every((e) => e.target.startsWith("public/pwa/"))).toBe(true);
+  });
+
+  it("uses custom outputDir from a PresetConfig object", () => {
+    const config: IconConfig = {
+      source: "./icon.svg",
+      presets: [{ name: "pwa", outputDir: "assets/pwa-icons" }],
+    };
+    const entries = resolveEntries(config);
+    expect(entries.every((e) => e.target.startsWith("assets/pwa-icons/"))).toBe(true);
+  });
+
+  it("uses custom publicDir for vite preset via PresetConfig", () => {
+    const config: IconConfig = {
+      source: "./icon.svg",
+      presets: [{ name: "vite", publicDir: "static" }],
+    };
+    const entries = resolveEntries(config);
+    expect(entries.every((e) => e.target.startsWith("static/"))).toBe(true);
+  });
+
+  it("uses custom resourcesDir for electron-vite preset via PresetConfig", () => {
+    const config: IconConfig = {
+      source: "./icon.svg",
+      presets: [{ name: "electron-vite", resourcesDir: "build/res" }],
+    };
+    const entries = resolveEntries(config);
+    expect(entries.every((e) => e.target.startsWith("build/res/"))).toBe(true);
   });
 
   it("includes manual entries", () => {
